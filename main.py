@@ -1,10 +1,13 @@
 import random
 from random import randint
-import time
+from metier import Mineur
+from metier import liste_pnj
 
+print("test2")
 
 class PNJ:
-    def __init__(self):
+    def __init__(self, id_pnj):
+        self.__id = id_pnj
         self.name = str(input("Name ? : "))
         self.sexe = random.choice(['homme', 'femme'])
         # vie
@@ -15,8 +18,8 @@ class PNJ:
         self.faim_pnj = 100
         self.soif_pnj = 100
         self.Gold_pnj = 0
-        self.metier = ["Mineur","Bucheront"] #str(input("Quel est votre classe de combat ? Forgeron/Mineur/Bucheront/Agriculteur/Pecheur/Commercant/Tavernier/Aventurier : "))
-        self.class_metier = random.choice(self.metier)
+        self.job = ["Mineur","Bucheront"] #str(input("Quel est votre classe de combat ? Forgeron/Mineur/Bucheront/Agriculteur/Pecheur/Commercant/Tavernier/Aventurier : "))
+        self.class_metier = random.choice(self.job)
         # personalitys
         self.pecher = ['colere', 'luxure', 'envie', 'paresse', 'orgueil', 'gourmandise', 'avarice']
         self.vertue = ['patience', 'purete', 'charite', 'diligence', 'humilite', 'temperance', 'desinteressement']
@@ -75,17 +78,6 @@ class PNJ:
         self.soif_pnj += 30
         return self.less_gold_pnj(3), self.soif_pnj
 
-    # vente metier
-    def vt_cailloux(self):
-        #print("cailloux vendue !")
-        x = randint(1, 4)
-        return self.more_gold_pnj(x)
-
-    def vt_cuivre(self):
-        #print("cuivre vendue !")
-        z = randint(5, 10)
-        return self.more_gold_pnj(z)
-
     def vt_chene(self):
         #print("chene vendue !")
         return self.more_gold_pnj(3)
@@ -140,28 +132,6 @@ class PNJ:
         else:
             return
 
-    # action produire
-    def metier_mineur(self):
-        return self.minage()
-
-    def minage(self):
-        #print("j'ai cassé du cailloux")
-        caill_miner = randint(1, 10)
-        if caill_miner >= 3:
-            #print("cailloux miner")
-            self.faim_pnj -= 2
-            self.soif_pnj -= 4
-            return self.vt_cailloux(), self.faim_pnj, self.soif_pnj
-        elif caill_miner < 3:
-            #print("cuivre miner")
-            self.faim_pnj -= 5
-            self.soif_pnj -= 8
-            return self.vt_cuivre(), self.faim_pnj, self.soif_pnj
-        print("faim - 5 & soif - 10")
-        self.faim_pnj -= 5
-        self.soif_pnj -= 10
-        return self.faim_pnj, self.soif_pnj
-
     def metier_bucheront(self):
         return self.hachage()
 
@@ -186,17 +156,26 @@ class PNJ:
 
     def class_test(self):  # test
         if self.class_metier == "Mineur":
-            return self.metier_mineur()
+            #print("Mineur")
+            liste = Mineur.metier_mineur(Mineur, self.faim_pnj, self.soif_pnj, self.dico_pnj, self.__id)
+            #print(f"{liste[3]}")
+            self.more_gold_pnj(liste[0])
+            self.faim_pnj = liste[1]
+            self.soif_pnj = liste[2]
+            self.dico_pnj = liste[3]
+            return self.faim_pnj, self.soif_pnj, self.dico_pnj
         elif self.class_metier == "Bucheront":
             return self.metier_bucheront()
         elif self.class_metier == "Forgeron":
             return self.metier_forgeron()
 
     def class_metiers(self):
-        print(f"Metier : {self.class_metier} | Gold : {self.Gold_pnj}")
+        print(f"Metier : {self.class_metier} | Gold : {self.Gold_pnj} | id : {self.__id}")
         print(f"PV : {self.HP_pnj} | Stamina : {self.Stamina_pnj}")
         print(f"Faim : {self.faim_pnj} | Soif : {self.soif_pnj} | Temps : {self.temp}")
-        #print(f"Historique des transaction : {self.transaction}")
+        print(f"Historique des transaction : {self.transaction}")
+        for key in self.dico_pnj.items():
+            print(f"rencontre[{key}]")
 
     def game_pj(self, age_fin):
         if not self.temp == age_fin:
@@ -204,13 +183,11 @@ class PNJ:
             self.faim_pnj -= 8
             self.soif_pnj -= 10
             self.class_metiers()
-            print("")
             if self.give_faim_pnj() <= 0 or self.give_soif_pnj() <= 0:
                 print(f"{self.name} mort de faim ou de soif a {self.temp} ans")
                 return 0
             self.temp += 1
-            print(f"ans {self.temp}")
-            time.sleep(0.1)
+            #print(f"ans {self.temp}")
             return 1
         print(f"{self.name} mort de vielleisse !")
         return 0
