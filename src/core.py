@@ -1,6 +1,8 @@
 from random import randint, choice
 from copy import deepcopy
 
+PT = ["parent", "child"] #TODO don't forget
+
 class PNJ:
     def __init__(self, id_pnj):
         self.__id = id_pnj
@@ -14,7 +16,7 @@ class PNJ:
         self.faim_pnj = 100
         self.soif_pnj = 100
         self.Gold_pnj = 0
-        self.job = ["Mineur"] #str(input("Quel est votre classe de combat ? Forgeron/Mineur/Bucheront/Agriculteur/Pecheur/Commercant/Tavernier/Aventurier : ")),"Bucheront"
+        self.job = ["Mineur"] #str(input("Quel est votre classe ? Forgeron/Mineur/Bucheront/Agriculteur/Pecheur/Commercant/Tavernier/Aventurier : ")),"Bucheront"
         self.class_metier = choice(self.job)
         # personalitys
         self.pecher = {'colere':0, 'luxure':0, 'envie':0, 'paresse':0, 'orgueil':0, 'gourmandise':0, 'avarice':0}
@@ -22,6 +24,7 @@ class PNJ:
         self.personalitys()
         self.dico_pnj = {self.__id : 0}
         self.link = {}
+        self.need_bb = False
         # self.nourriture = ['pomme', 'pain', 'soupe']
         self.inventory = {}
         self.transaction = []
@@ -102,21 +105,41 @@ class PNJ:
             print(f"{lst_vertue[i]} : {vrtue} / {lst_pecher[i]} : {pcher} %")
 
     def show_personality(self):
-        for cle, valeur in self.dico_personallity.items():
-            #print("l'élément de clé", cle, "vaut", valeur)
-            print(f"{str(cle)} : {self.dico_personallity[cle]} / {str(cle + 1)} : {self.dico_personallity[cle + 1]} %")
+        lst_pecher = list(self.pecher.keys())
+        lst_vertue = list(self.vertue.keys())
+        for i in range(7):
+            print(f"{lst_vertue[i]} : {self.vertue[lst_vertue[i]]} / {lst_pecher[i]} : {self.pecher[lst_pecher[i]]} %")
 
-    def shild(self, pnj_id):
+    def linking(self):
         if self.link:
+            return self.link
+        for key, value in self.dico_pnj.items():
+            test = CORE.liste_pnj["test{0}".format(key)]
+            if value >= 20 and self.temp >= 20 and test.sexe != self.sexe and not test.link:
+                thisName = str(input("name ? "))
+                self.link[key] = thisName
+                test.link[self.__id] = thisName
+                print(thisName + " -> " + str(key) + " " + str(self.__id))
+                break
+        return self.link
+
+    def shild(self, pnj_id, nbr_pnj):
+        if self.need_bb is True:
             CORE.liste_pnj["test{0}".format(pnj_id)] = PNJ(pnj_id)
+            nbr_pnj += 1
             pnj_id += 1
+            self.need_bb = False
+            return pnj_id, nbr_pnj
+        if self.link and self.sexe == "femme":
+            self.need_bb = True
+            return self.need_bb
         return pnj_id
 
     # quotidien du pnj
     def vivre_pnj(self):
         # self.metier_mineur()
         self.class_test()
-        self.shild(CORE.pnj_id)
+        self.linking()
         self.faim_pj()  # boir / #produire /#vendre /#acheter
         self.soif_pj()
 
@@ -165,7 +188,7 @@ class PNJ:
             return self.vt_epicia()
         return
 
-    def class_test(self):  # test
+    def class_test(self):  #TODO: change method of calling job
         if self.class_metier == "Mineur":
             #print("Mineur")
             liste = Mineur.metier_mineur(Mineur, self.faim_pnj, self.soif_pnj, self.dico_pnj, self.__id)
@@ -184,18 +207,19 @@ class PNJ:
         print(f"PV : {self.HP_pnj} | Stamina : {self.Stamina_pnj} | Sexe : {self.sexe}")
         print(f"Faim : {self.faim_pnj} | Soif : {self.soif_pnj} | Temps : {self.temp}")
         print(f"Historique des transaction : {self.transaction}")
-        #self.show_personality()
-        for key in self.dico_pnj.items():
-            print(f"rencontre[{key}]")
+        # self.show_personality()
+        print(f"Rencontre :{self.dico_pnj}")
 
-    def game_pj(self, Core, age_fin):
+    def game_pj(self, Core, age_fin): #TODO: suppr useless variable
         if not self.temp == age_fin:
             self.vivre_pnj()
             self.faim_pnj -= 8
             self.soif_pnj -= 10
             self.class_metiers()
-            if self.give_faim_pnj() <= 0 or self.give_soif_pnj() <= 0:
+            self.shild(CORE.pnj_id, CORE.nbr_pnj)
+            if self.give_faim_pnj() <= 0 or self.give_soif_pnj() <= 0: #TODO: change cond for HP
                 print(f"{self.name} mort de faim ou de soif a {self.temp} ans")
+                CORE.suppr_in_dico(self.__id)
                 return 0
             self.temp += 1
             #print(f"ans {self.temp}")
@@ -227,13 +251,10 @@ class Mineur:
     def rencontre_metier(self, current_pnj, dico_pnj):
         tmp_dico = deepcopy(dico_pnj)
         for keys, values in CORE.liste_pnj.items():
-            for key, value in dico_pnj.items():
-                #print(f"3: {key}")
-                if current_pnj.give_job_pnj() == values.give_job_pnj() and key != current_pnj.give_id_pnj():
-                    tmp_dico[key] = tmp_dico[key] + 1
-                elif key == current_pnj.give_id_pnj():
-                    continue
-                else:
+            if current_pnj.give_id_pnj() != values.give_id_pnj() and current_pnj.give_job_pnj() == values.give_job_pnj():
+                try:
+                    tmp_dico[values.give_id_pnj()] = tmp_dico[values.give_id_pnj()] + 1
+                except:
                     tmp_dico[values.give_id_pnj()] = 1
         return tmp_dico
 
@@ -271,12 +292,25 @@ class Core:
             self.pnj_id += 1
         return self.liste_pnj, self.pnj_id
 
+    def suppr_in_dico(self, id_dead):
+        for key, value in self.liste_pnj.items():
+            try:
+                del value.dico_pnj[id_dead]
+                if value.link:
+                    del value.link[id_dead]
+            except:
+                continue
+        return self.liste_pnj
+
     def loop_game(self):
         while self.nbr_pnj != 0:
+            tmp_nbr_pnj = self.pnj_id
             for key, value in self.liste_pnj.items():
                 if value.game_pj(self, self.age_fin) == 0:
                     del self.liste_pnj[key]
                     self.nbr_pnj -= 1
+                # value.shild(self.pnj_id, self.nbr_pnj)
+                if tmp_nbr_pnj != self.nbr_pnj:
                     break
             #for i in range(nbr_pnj):
                 #print('|', end='')
